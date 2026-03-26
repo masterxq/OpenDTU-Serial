@@ -66,31 +66,33 @@ void HoymilesClass::loop()
             iv->Statistics()->zeroRuntimeData();
         }
 
-        if (iv->getEnablePolling() || iv->getEnableCommands()) {
+        bool queuedWork = false;
+
+        if (iv->getEnablePolling()) {
             ESP_LOGI(TAG, "Fetch inverter: %s", iv->serialString().c_str());
 
             if (!iv->isReachable()) {
-                iv->sendChangeChannelRequest();
+                queuedWork = iv->sendChangeChannelRequest() || queuedWork;
             }
 
             if (Utils::getTimeAvailable()) {
                 // Fetch statistics
-                iv->sendStatsRequest();
+                queuedWork = iv->sendStatsRequest() || queuedWork;
 
                 // Fetch event log
                 const bool force = iv->EventLog()->getLastAlarmRequestSuccess() == CMD_NOK;
-                iv->sendAlarmLogRequest(force);
+                queuedWork = iv->sendAlarmLogRequest(force) || queuedWork;
 
                 // Fetch limit
                 if (((millis() - iv->SystemConfigPara()->getLastUpdateRequest() > HOY_SYSTEM_CONFIG_PARA_POLL_INTERVAL)
                         && (millis() - iv->SystemConfigPara()->getLastUpdateCommand() > HOY_SYSTEM_CONFIG_PARA_POLL_MIN_DURATION))) {
                     ESP_LOGI(TAG, "Request SystemConfigPara");
-                    iv->sendSystemConfigParaRequest();
+                    queuedWork = iv->sendSystemConfigParaRequest() || queuedWork;
                 }
 
                 // Fetch grid profile
                 if (iv->Statistics()->getLastUpdate() > 0 && (iv->GridProfile()->getLastUpdate() == 0 || !iv->GridProfile()->containsValidData())) {
-                    iv->sendGridOnProFileParaRequest();
+                    queuedWork = iv->sendGridOnProFileParaRequest() || queuedWork;
                 }
 
                 // Fetch dev info (but first fetch stats)
@@ -107,23 +109,25 @@ void HoymilesClass::loop()
                         || (iv->DevInfo()->getLastUpdateSimple() == 0)
                         || invalidDevInfo) {
                         ESP_LOGI(TAG, "Request device info");
-                        iv->sendDevInfoRequest();
+                        queuedWork = iv->sendDevInfoRequest() || queuedWork;
                     }
                 }
             }
+        }
 
-            // Set limit if required
+        if (iv->getEnableCommands()) {
             if (iv->SystemConfigPara()->getLastLimitCommandSuccess() == CMD_NOK) {
                 ESP_LOGI(TAG, "Resend ActivePowerControl");
-                iv->resendActivePowerControlRequest();
+                queuedWork = iv->resendActivePowerControlRequest() || queuedWork;
             }
 
-            // Set power status if required
             if (iv->PowerCommand()->getLastPowerCommandSuccess() == CMD_NOK) {
                 ESP_LOGI(TAG, "Resend PowerCommand");
-                iv->resendPowerControlRequest();
+                queuedWork = iv->resendPowerControlRequest() || queuedWork;
             }
+        }
 
+        if (queuedWork) {
             ESP_LOGI(TAG, "Queue size - NRF: %" PRIu32 " CMT: %" PRIu32 "", _radioNrf->getQueueSize(), _radioCmt->getQueueSize());
             _lastPoll = millis();
         }

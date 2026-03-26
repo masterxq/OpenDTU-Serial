@@ -37,8 +37,8 @@ Baud: 115200
 Setting in der buildconf:
 
 ```bash
--DUART_DATA_RX=GPIO_NUM_15
--DUART_DATA_TX=GPIO_NUM_14
+-DUART_DATA_RX=GPIO_NUM_14
+-DUART_DATA_TX=GPIO_NUM_15
 ```
 
 Sobald UART_DATA_TX gesetzt ist wird die funktion aktiviert. Nur empfangen geht nicht.
@@ -103,6 +103,29 @@ Bei einem `state` Push Update ist `command` das tatsächlich ausgeführte Komman
 `state` beschreibt den resultierenden Inverterzustand und ist daher immer nur `on` oder `off`.
 Ein erfolgreich umgesetzter `restart` wird also als `command: "restart"` und `state: "on"` gemeldet.
 
+- Zusätzlich sendet die DTU alle 15 Sekunden einen Inventar-Datensatz mit allen bekannten Invertern und dem Polling-Status. `poll_enabled` ist die konfigurierbare Freigabe, `polling_active` der aktuell wirksame Zustand nach Tag/Nacht-Logik.
+
+```json
+{
+  "type": "inventory",
+  "interval_s": 15,
+  "inverters": [
+    {
+      "serial": "12345678",
+      "name": "Akku WR",
+      "poll_enabled": false,
+      "polling_active": false
+    },
+    {
+      "serial": "87654321",
+      "name": "PV WR",
+      "poll_enabled": true,
+      "polling_active": true
+    }
+  ]
+}
+```
+
 ### Daten Anfrage und Kommandos absetzen
 
 Man kann auch Daten an die DTU senden, um entweder Informationen abzufragen oder Kommandos zu setzen.
@@ -147,6 +170,16 @@ Jedes empfangene Kommando wird zuerst mit einem `ack` bestätigt. Dieses `ack` b
 {
   "type": "get_data",
   "serial": "12345678"
+}
+```
+
+- Regelmäßigen Datenabruf für einen Inverter ein- oder ausschalten. Das ändert nur den Laufzeitstatus in der aktuellen Session, nicht die persistent gespeicherte Config auf Flash. Nach erfolgreichem `ack` sendet die DTU direkt zusätzlich ein aktuelles `inventory`-Objekt.
+
+```json
+{
+  "type": "set_polling",
+  "serial": "12345678",
+  "enabled": false
 }
 ```
 

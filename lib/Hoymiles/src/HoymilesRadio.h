@@ -29,6 +29,7 @@ public:
     bool isInitialized() const;
 
     void removeCommands(InverterAbstract* inv);
+    void removePollingCommands(InverterAbstract* inv);
     uint8_t countSimilarCommands(std::shared_ptr<CommandAbstract> cmd);
 
     void enqueCommand(std::shared_ptr<CommandAbstract> cmd)

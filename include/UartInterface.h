@@ -23,11 +23,14 @@ private:
     void processIncomingData();
     void handleCommandLine(const char* line);
     void emitPendingUpdates();
+    void emitInverterInventory(bool force = false);
 
     Task _loopTask;
     std::vector<InverterTracker> _trackers;
+    uint32_t _lastInventoryUpdate = 0;
 
     static constexpr size_t INPUT_BUFFER_SIZE = 256;
+    static constexpr uint32_t INVENTORY_INTERVAL_MS = 15 * 1000;
     char _inputBuffer[INPUT_BUFFER_SIZE] = {};
     size_t _inputLength = 0;
     bool _inputOverflow = false;
