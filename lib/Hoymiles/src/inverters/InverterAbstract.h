@@ -71,6 +71,8 @@ public:
 
     void resetRadioStats();
 
+    float convertLimitToWatts(const float limit, const PowerLimitControlType type);
+
     struct {
         // TX Request Data
         uint32_t TxRequestData;

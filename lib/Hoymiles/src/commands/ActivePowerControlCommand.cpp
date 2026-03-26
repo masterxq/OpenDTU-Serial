@@ -101,9 +101,15 @@ bool ActivePowerControlCommand::handleResponse(const fragment_t fragment[], cons
         }
     }
     _inv->SystemConfigPara()->setLastUpdateCommand(millis());
+    _inv->SystemConfigPara()->setLastAppliedLimitWatts(_inv->convertLimitToWatts(getLimit(), getType()));
+    _inv->SystemConfigPara()->setLastCompletedLimitCommandSuccess(CMD_OK);
     std::shared_ptr<ActivePowerControlCommand> cmd(std::shared_ptr<ActivePowerControlCommand>(), this);
     if (_inv->getRadio()->countSimilarCommands(cmd) == 1) {
         _inv->SystemConfigPara()->setLastLimitCommandSuccess(CMD_OK);
+        _inv->SystemConfigPara()->setPendingLimitCommand(false);
+        _inv->SystemConfigPara()->clearPendingLimitWatts();
+    } else {
+        _inv->SystemConfigPara()->setLastLimitCommandSuccess(CMD_PENDING);
     }
     return true;
 }
@@ -148,5 +154,13 @@ uint32_t ActivePowerControlCommand::getControlTypeValue(ActivePowerControlDevice
 
 void ActivePowerControlCommand::gotTimeout()
 {
-    _inv->SystemConfigPara()->setLastLimitCommandSuccess(CMD_NOK);
+    std::shared_ptr<ActivePowerControlCommand> cmd(std::shared_ptr<ActivePowerControlCommand>(), this);
+    _inv->SystemConfigPara()->setLastCompletedLimitCommandSuccess(CMD_NOK);
+    if (_inv->getRadio()->countSimilarCommands(cmd) == 1) {
+        _inv->SystemConfigPara()->setLastLimitCommandSuccess(CMD_NOK);
+        _inv->SystemConfigPara()->setPendingLimitCommand(false);
+        _inv->SystemConfigPara()->clearPendingLimitWatts();
+    } else {
+        _inv->SystemConfigPara()->setLastLimitCommandSuccess(CMD_PENDING);
+    }
 }

@@ -76,6 +76,28 @@ LastCommandSuccess SystemConfigParaParser::getLastLimitCommandSuccess() const
     return _lastLimitCommandSuccess;
 }
 
+void SystemConfigParaParser::setLastCompletedLimitCommandSuccess(const LastCommandSuccess status)
+{
+    _lastCompletedLimitCommandSuccess = status;
+    _hasCompletedLimitCommandResult = true;
+    _lastCompletedLimitCommandUpdate = millis();
+}
+
+LastCommandSuccess SystemConfigParaParser::getLastCompletedLimitCommandSuccess() const
+{
+    return _lastCompletedLimitCommandSuccess;
+}
+
+bool SystemConfigParaParser::hasCompletedLimitCommandResult() const
+{
+    return _hasCompletedLimitCommandResult;
+}
+
+uint32_t SystemConfigParaParser::getLastCompletedLimitCommandUpdate() const
+{
+    return _lastCompletedLimitCommandUpdate;
+}
+
 uint32_t SystemConfigParaParser::getLastUpdateCommand() const
 {
     return _lastUpdateCommand;
@@ -85,6 +107,51 @@ void SystemConfigParaParser::setLastUpdateCommand(const uint32_t lastUpdate)
 {
     _lastUpdateCommand = lastUpdate;
     setLastUpdate(lastUpdate);
+}
+
+void SystemConfigParaParser::setLastAppliedLimitWatts(const float value)
+{
+    _lastAppliedLimitWatts = value;
+}
+
+float SystemConfigParaParser::getLastAppliedLimitWatts() const
+{
+    return _lastAppliedLimitWatts;
+}
+
+bool SystemConfigParaParser::hasLastAppliedLimitWatts() const
+{
+    return _lastAppliedLimitWatts >= 0;
+}
+
+void SystemConfigParaParser::setPendingLimitCommand(const bool pending)
+{
+    _pendingLimitCommand = pending;
+}
+
+bool SystemConfigParaParser::getPendingLimitCommand() const
+{
+    return _pendingLimitCommand;
+}
+
+void SystemConfigParaParser::setPendingLimitWatts(const float value)
+{
+    _pendingLimitWatts = value;
+}
+
+float SystemConfigParaParser::getPendingLimitWatts() const
+{
+    return _pendingLimitWatts;
+}
+
+bool SystemConfigParaParser::hasPendingLimitWatts() const
+{
+    return _pendingLimitWatts >= 0;
+}
+
+void SystemConfigParaParser::clearPendingLimitWatts()
+{
+    _pendingLimitWatts = -1;
 }
 
 void SystemConfigParaParser::setLastLimitRequestSuccess(const LastCommandSuccess status)

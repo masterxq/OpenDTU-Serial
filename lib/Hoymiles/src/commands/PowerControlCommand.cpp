@@ -44,6 +44,20 @@ String PowerControlCommand::getCommandName() const
     return "PowerControl";
 }
 
+namespace {
+PowerCommandType getPowerCommandType(const uint8_t payloadType)
+{
+    if (payloadType == 0x01) {
+        return PowerCommandType::Off;
+    }
+    if (payloadType == 0x02) {
+        return PowerCommandType::Restart;
+    }
+
+    return PowerCommandType::On;
+}
+}
+
 bool PowerControlCommand::handleResponse(const fragment_t fragment[], const uint8_t max_fragment_id)
 {
     if (!DevControlCommand::handleResponse(fragment, max_fragment_id)) {
@@ -52,12 +66,21 @@ bool PowerControlCommand::handleResponse(const fragment_t fragment[], const uint
 
     _inv->PowerCommand()->setLastUpdateCommand(millis());
     _inv->PowerCommand()->setLastPowerCommandSuccess(CMD_OK);
+    _inv->PowerCommand()->setLastCompletedPowerCommandSuccess(CMD_OK);
+    _inv->PowerCommand()->setLastCompletedPowerCommand(getPowerCommandType(_payload[10]));
+    if (_payload[10] == 0x01) {
+        _inv->PowerCommand()->setLastStateCommand(LastStateCommand::Off);
+    } else {
+        _inv->PowerCommand()->setLastStateCommand(LastStateCommand::On);
+    }
     return true;
 }
 
 void PowerControlCommand::gotTimeout()
 {
     _inv->PowerCommand()->setLastPowerCommandSuccess(CMD_NOK);
+    _inv->PowerCommand()->setLastCompletedPowerCommandSuccess(CMD_NOK);
+    _inv->PowerCommand()->setLastCompletedPowerCommand(getPowerCommandType(_payload[10]));
 }
 
 void PowerControlCommand::setPowerOn(const bool state)

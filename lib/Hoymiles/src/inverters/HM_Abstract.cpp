@@ -114,6 +114,8 @@ bool HM_Abstract::sendActivePowerControlRequest(float limit, const PowerLimitCon
     auto cmd = _radio->prepareCommand<ActivePowerControlCommand>(this);
     cmd->setActivePowerLimit(limit, type);
     SystemConfigPara()->setLastLimitCommandSuccess(CMD_PENDING);
+    SystemConfigPara()->setPendingLimitCommand(true);
+    SystemConfigPara()->setPendingLimitWatts(convertLimitToWatts(limit, type));
     _radio->enqueCommand(cmd);
 
     return true;
@@ -139,6 +141,8 @@ bool HM_Abstract::sendPowerControlRequest(const bool turnOn)
     auto cmd = _radio->prepareCommand<PowerControlCommand>(this);
     cmd->setPowerOn(turnOn);
     PowerCommand()->setLastPowerCommandSuccess(CMD_PENDING);
+    PowerCommand()->setRequestedStateCommand(turnOn ? LastStateCommand::On : LastStateCommand::Off);
+    PowerCommand()->setRequestedPowerCommand(turnOn ? PowerCommandType::On : PowerCommandType::Off);
     _radio->enqueCommand(cmd);
 
     return true;
@@ -155,6 +159,8 @@ bool HM_Abstract::sendRestartControlRequest()
     auto cmd = _radio->prepareCommand<PowerControlCommand>(this);
     cmd->setRestart();
     PowerCommand()->setLastPowerCommandSuccess(CMD_PENDING);
+    PowerCommand()->setRequestedStateCommand(LastStateCommand::On);
+    PowerCommand()->setRequestedPowerCommand(PowerCommandType::Restart);
     _radio->enqueCommand(cmd);
 
     return true;

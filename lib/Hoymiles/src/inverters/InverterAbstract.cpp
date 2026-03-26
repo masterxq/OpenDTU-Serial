@@ -301,3 +301,17 @@ void InverterAbstract::resetRadioStats()
 {
     RadioStats = {};
 }
+
+float InverterAbstract::convertLimitToWatts(const float limit, const PowerLimitControlType type)
+{
+    if (type == PowerLimitControlType::AbsolutNonPersistent || type == PowerLimitControlType::AbsolutPersistent) {
+        return limit;
+    }
+
+    const uint16_t maxPower = DevInfo()->getMaxPower();
+    if (maxPower == 0) {
+        return -1;
+    }
+
+    return limit * maxPower / 100.0f;
+}

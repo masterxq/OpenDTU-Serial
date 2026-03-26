@@ -19,7 +19,12 @@ void CommandQueue::removeDuplicatedEntries(std::shared_ptr<CommandAbstract> cmd)
 {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    auto it = std::remove_if(_queue.begin() + 1, _queue.end(),
+    auto start = _queue.begin();
+    if (!_queue.empty() && _queue.front()->getSendCount() > 0) {
+        ++start;
+    }
+
+    auto it = std::remove_if(start, _queue.end(),
         [&](const auto& v) {
             return cmd->areSameParameter(v.get())
                 && cmd.get()->getQueueInsertType() == QueueInsertType::RemoveOldest;
@@ -31,7 +36,12 @@ void CommandQueue::replaceEntries(std::shared_ptr<CommandAbstract> cmd)
 {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    std::replace_if(_queue.begin() + 1, _queue.end(),
+    auto start = _queue.begin();
+    if (!_queue.empty() && _queue.front()->getSendCount() > 0) {
+        ++start;
+    }
+
+    std::replace_if(start, _queue.end(),
         [&](const auto& v) {
             return cmd.get()->getQueueInsertType() == QueueInsertType::ReplaceExistent
                 && cmd->areSameParameter(v.get());

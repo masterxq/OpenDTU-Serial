@@ -21,6 +21,7 @@
 #include "RestartHelper.h"
 #include "Scheduler.h"
 #include "SunPosition.h"
+#include "UartInterface.h"
 #include "Utils.h"
 #include "WebApi.h"
 #include "defaults.h"
@@ -45,6 +46,7 @@ void setup()
         yield();
 #endif
     MessageOutput.init(scheduler);
+    UartInterface.init(scheduler);
 
     // For now, the log levels are just hard coded
     esp_log_level_set("*", ESP_LOG_VERBOSE);

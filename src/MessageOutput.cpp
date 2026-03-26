@@ -27,6 +27,12 @@ void MessageOutputClass::register_ws_output(AsyncWebSocket* output)
     _ws = output;
 }
 
+void MessageOutputClass::setSerialOutputEnabled(bool enabled)
+{
+    std::lock_guard<std::mutex> lock(_msgLock);
+    _serialOutputEnabled = enabled;
+}
+
 int MessageOutputClass::log_vprintf(const char* fmt, va_list arguments)
 {
     std::lock_guard<std::mutex> lock(MessageOutput._msgLock);
@@ -142,6 +148,10 @@ int MessageOutputClass::log_vprintf_recursive(const char* fmt, va_list arguments
 
 void MessageOutputClass::serialWrite(const uint8_t* buffer, size_t size)
 {
+    if (!_serialOutputEnabled) {
+        return;
+    }
+
     // operator bool() of HWCDC returns false if the device is not attached to
     // a USB host. in general it makes sense to skip writing entirely if the
     // default serial port is not ready.

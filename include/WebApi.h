@@ -21,6 +21,7 @@
 #include "WebApi_prometheus.h"
 #include "WebApi_security.h"
 #include "WebApi_sysstatus.h"
+#include "WebApi_v1.h"
 #include "WebApi_webapp.h"
 #include "WebApi_ws_console.h"
 #include "WebApi_ws_live.h"
@@ -67,6 +68,7 @@ private:
     WebApiPrometheusClass _webApiPrometheus;
     WebApiSecurityClass _webApiSecurity;
     WebApiSysstatusClass _webApiSysstatus;
+    WebApiV1Class _webApiV1;
     WebApiWebappClass _webApiWebapp;
     WebApiWsConsoleClass _webApiWsConsole;
     WebApiWsLiveClass _webApiWsLive;

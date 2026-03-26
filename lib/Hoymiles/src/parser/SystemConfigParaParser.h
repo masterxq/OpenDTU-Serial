@@ -15,8 +15,22 @@ public:
 
     void setLastLimitCommandSuccess(const LastCommandSuccess status);
     LastCommandSuccess getLastLimitCommandSuccess() const;
+    void setLastCompletedLimitCommandSuccess(const LastCommandSuccess status);
+    LastCommandSuccess getLastCompletedLimitCommandSuccess() const;
+    bool hasCompletedLimitCommandResult() const;
+    uint32_t getLastCompletedLimitCommandUpdate() const;
     uint32_t getLastUpdateCommand() const;
     void setLastUpdateCommand(const uint32_t lastUpdate);
+    void setLastAppliedLimitWatts(const float value);
+    float getLastAppliedLimitWatts() const;
+    bool hasLastAppliedLimitWatts() const;
+
+    void setPendingLimitCommand(const bool pending);
+    bool getPendingLimitCommand() const;
+    void setPendingLimitWatts(const float value);
+    float getPendingLimitWatts() const;
+    bool hasPendingLimitWatts() const;
+    void clearPendingLimitWatts();
 
     void setLastLimitRequestSuccess(const LastCommandSuccess status);
     LastCommandSuccess getLastLimitRequestSuccess() const;
@@ -31,8 +45,14 @@ private:
     uint8_t _payloadLength;
 
     LastCommandSuccess _lastLimitCommandSuccess = CMD_OK; // Set to OK because we have to assume nothing is done at startup
+    LastCommandSuccess _lastCompletedLimitCommandSuccess = CMD_OK;
     LastCommandSuccess _lastLimitRequestSuccess = CMD_NOK; // Set to NOK to fetch at startup
+    bool _hasCompletedLimitCommandResult = false;
+    bool _pendingLimitCommand = false;
+    uint32_t _lastCompletedLimitCommandUpdate = 0;
 
     uint32_t _lastUpdateCommand = 0;
     uint32_t _lastUpdateRequest = 0;
+    float _lastAppliedLimitWatts = -1;
+    float _pendingLimitWatts = -1;
 };

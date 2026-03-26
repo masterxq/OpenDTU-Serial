@@ -16,6 +16,7 @@ public:
     MessageOutputClass();
     void init(Scheduler& scheduler);
     void register_ws_output(AsyncWebSocket* output);
+    void setSerialOutputEnabled(bool enabled);
 
     static int log_vprintf(const char *fmt, va_list arguments);
 
@@ -58,6 +59,7 @@ private:
     std::mutex _msgLock;
 
     void serialWrite(const uint8_t* buffer, size_t size);
+    bool _serialOutputEnabled = true;
 
     static constexpr uint32_t RATE_LIMIT_WINDOW_MS = 1000;
     static constexpr size_t RATE_LIMIT_MAX_TOKENS = 128;
