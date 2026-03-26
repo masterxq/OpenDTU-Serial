@@ -554,19 +554,14 @@ void UartInterfaceClass::handleCommandLine(const char* line)
         }
 
         const bool enabled = doc["enabled"].as<bool>();
-        bool effectiveEnabled = enabled;
-
-        {
-            auto guard = Configuration.getWriteGuard();
-            auto* cfg = Configuration.getInverterConfig(serialNumber);
-            if (cfg == nullptr) {
-                writeAck(dataSerial, "set_polling", doc["serial"], false);
-                return;
-            }
-
-            cfg->Poll_Enable = enabled;
-            effectiveEnabled = cfg->Poll_Enable && (SunPosition.isDayPeriod() || cfg->Poll_Enable_Night);
+        auto* cfg = Configuration.getInverterConfig(serialNumber);
+        if (cfg == nullptr) {
+            writeAck(dataSerial, "set_polling", doc["serial"], false);
+            return;
         }
+
+        cfg->Poll_Enable = enabled;
+        const bool effectiveEnabled = cfg->Poll_Enable && (SunPosition.isDayPeriod() || cfg->Poll_Enable_Night);
 
         if (!enabled) {
             inv->getRadio()->removePollingCommands(inv.get());
