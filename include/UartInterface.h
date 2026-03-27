@@ -16,6 +16,7 @@ private:
         uint32_t lastDataUpdate = 0;
         uint32_t lastLimitDecisionUpdate = 0;
         uint32_t lastStateDecisionUpdate = 0;
+        bool lastPollEnabled = true;
     };
 
     void loop();

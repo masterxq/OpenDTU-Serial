@@ -18,6 +18,7 @@ Enthällt Folgende Datensätze:
   - `pending_limit`: Ob gerade ein Limit noch auf die umsetzung wartet.
   - `watts_pending`: Das Limit in Watt das gerade auf die Umsetzung wartet. Weglassen wenn `pending_limit` false ist.
   - `last_state_cmd`: on/off. gibt an welcher state (Anschalten/Ausschalten) zuletzt erfolgreich an den Inverter gesendet wurde.
+  - `poll_enabled`: true/false. Ob der regelmäßige Datenabruf für diesen Inverter aktiviert ist.
 - `live`: Objekt mit den aktuellen Live Daten des Inverters
   - `live_age_ms`: Zeit seit den letzten empfangenen inverter Datenpaket in ms
   - `ac_power`: Aktuelle Leistung in Watt auf netz Seite
@@ -52,7 +53,9 @@ Die Daten werden als JSON String gesendet, mit einem Zeilenumbruch am Ende. Es g
 
 Es wird unterschieden zwischen zwei Arten von Updates, die sich im JSON Format unterscheiden:
 
-- Daten Update: Wenn die DTU Daten empfängt, wird ein Update mit genau den live daten aus dem API Endpunkt gesendet. Der timestamp wird dabei weg gelassen weil es immer sofort gesendet wird. Der empfänger kann dann selbst den timestamp setzen nach seiner systemzeit.
+#### Daten Update
+
+Wenn die DTU Daten empfängt, wird ein Update mit genau den live daten aus dem API Endpunkt gesendet. Der timestamp wird dabei weg gelassen weil es immer sofort gesendet wird. Der empfänger kann dann selbst den timestamp setzen nach seiner systemzeit.
 
 ```json
 {
@@ -71,7 +74,9 @@ Es wird unterschieden zwischen zwei Arten von Updates, die sich im JSON Format u
 }
 ```
 
-- Limit Update: Wenn der entschluss getroffen wurde ob ein limit cmd erfolgreich angewendet wurde, wird ein Update mit den Informationen zum limit gesendet.
+#### Limit Update
+
+Wenn der entschluss getroffen wurde ob ein limit cmd erfolgreich angewendet wurde, wird ein Update mit den Informationen zum limit gesendet.
 
 ```json
 {
@@ -84,7 +89,9 @@ Es wird unterschieden zwischen zwei Arten von Updates, die sich im JSON Format u
 }
 ```
 
-- Ähnliches bei einem power on/off/restart cmd:
+#### on/off/restart
+
+Wenn der entschluss getroffen wurde ob ein on/off/restart cmd erfolgreich angewendet wurde, wird ein Update mit den Informationen zum state gesendet.
 
 ```json
 {
@@ -98,33 +105,27 @@ Es wird unterschieden zwischen zwei Arten von Updates, die sich im JSON Format u
 }
 ```
 
+#### Polling Update
+
+Wenn die "Daten abrufen" Funktion für einen Inverter ein- oder ausgeschaltet wird, wird ein Update mit den Informationen zum Polling gesendet.
+Für das ändern des "Befehle senden" wird kein Update gesendet. Wenn wir das über die serielle schnittstelle ändern, wird eh immer beides geändert.
+
+```json
+{
+  "type": "polling",
+  "serial": "12345678",
+  "polling_cmd": {
+    "success": true,
+    "enabled": false
+  }
+}
+```
+
 Bei `set_state` darf `state` die Werte `on`, `off` oder `restart` haben.
 Bei einem `state` Push Update ist `command` das tatsächlich ausgeführte Kommando: `on`, `off` oder `restart`.
 `state` beschreibt den resultierenden Inverterzustand und ist daher immer nur `on` oder `off`.
 Ein erfolgreich umgesetzter `restart` wird also als `command: "restart"` und `state: "on"` gemeldet.
 
-- Zusätzlich sendet die DTU alle 15 Sekunden einen Inventar-Datensatz mit allen bekannten Invertern und dem Polling-Status. `poll_enabled` ist die konfigurierbare Freigabe, `polling_active` der aktuell wirksame Zustand nach Tag/Nacht-Logik.
-
-```json
-{
-  "type": "inventory",
-  "interval_s": 15,
-  "inverters": [
-    {
-      "serial": "12345678",
-      "name": "Akku WR",
-      "poll_enabled": false,
-      "polling_active": false
-    },
-    {
-      "serial": "87654321",
-      "name": "PV WR",
-      "poll_enabled": true,
-      "polling_active": true
-    }
-  ]
-}
-```
 
 ### Daten Anfrage und Kommandos absetzen
 
@@ -144,7 +145,21 @@ Jedes empfangene Kommando wird zuerst mit einem `ack` bestätigt. Dieses `ack` b
 }
 ```
 
-- Limit setzen. Immer in Watt, z.B. 250 für 250W
+Ein spezialfall ist das wenn polling deaktiviert ist. Dann bekommen Kommandos die an den Inverter gesendet werden ein `success: false` zurück, mit dem zusatz feld polling: false. Das betrifft insbesondere `set_limit` und `set_state`. `get_data` bleibt weiterhin möglich, damit der aktuelle bekannte Zustand inklusive `poll_enabled` weiter abgefragt werden kann. Es wird hierbei auch wieder nicht unterschieden ob daten abrufen oder befehle senden deaktiviert ist. Wenn polling deaktiviert ist, lehnen wir alle Kommandos die an den Inverter gesendet werden, ab.
+
+```json
+{
+  "type": "ack",
+  "command": "set_limit",
+  "serial": "12345678",
+  "success": false,
+  "polling": false
+}
+```
+
+#### Limit setzen
+
+Immer in Watt, z.B. 250 für 250W
 
 ```json
 {
@@ -154,7 +169,7 @@ Jedes empfangene Kommando wird zuerst mit einem `ack` bestätigt. Dieses `ack` b
 }
 ```
 
-- Power on/off/restart cmd
+#### Power on/off/restart cmd
 
 ```json
 {
@@ -164,7 +179,7 @@ Jedes empfangene Kommando wird zuerst mit einem `ack` bestätigt. Dieses `ack` b
 }
 ```
 
-- Daten Anfrage
+#### Daten Anfrage
 
 ```json
 {
@@ -173,17 +188,7 @@ Jedes empfangene Kommando wird zuerst mit einem `ack` bestätigt. Dieses `ack` b
 }
 ```
 
-- Regelmäßigen Datenabruf für einen Inverter ein- oder ausschalten. Das ändert nur den Laufzeitstatus in der aktuellen Session, nicht die persistent gespeicherte Config auf Flash. Nach erfolgreichem `ack` sendet die DTU direkt zusätzlich ein aktuelles `inventory`-Objekt.
-
-```json
-{
-  "type": "set_polling",
-  "serial": "12345678",
-  "enabled": false
-}
-```
-
-Die DTU antwortet mit einem Datensatz wie oben beschrieben. Wenn man die serial weglässt,antwortet die DTU mit einem Array von Datensätzen für alle Inverter. Dort sind natürlich wieder die ages dabei, weil das ja nicht in Echtzeit ist wie bei den Updates. In beiden fällen (mit oder ohne serial) ist die Antwort im selben Format, nur dass bei der Anfrage mit serial nur ein Objekt im Array zurück kommt und bei der Anfrage ohne serial ein Array von allen Objekten zurück kommt.
+Die DTU antwortet mit einem Datensatz wie oben beschrieben. Wenn man die serial weglässt, antwortet die DTU mit einem Array von Datensätzen für alle Inverter. Dort sind natürlich wieder die ages dabei, weil das ja nicht in Echtzeit ist wie bei den Updates. In beiden fällen (mit oder ohne serial) ist die Antwort im selben Format, nur dass bei der Anfrage mit serial nur ein Objekt im Array zurück kommt und bei der Anfrage ohne serial ein Array von allen Objekten zurück kommt.
 
 ```json
 {
@@ -195,7 +200,8 @@ Die DTU antwortet mit einem Datensatz wie oben beschrieben. Wenn man die serial 
         "last_applied_age_ms": 5000,
         "last_result": "ok",
         "pending_limit": false,
-        "last_state_cmd": "on"
+        "last_state_cmd": "on",
+        "poll_enabled": true
       },
       "serial": "12345678",
       "live": {
@@ -212,5 +218,19 @@ Die DTU antwortet mit einem Datensatz wie oben beschrieben. Wenn man die serial 
     },
     ...
   ]
+}
+```
+
+Wenn polling deaktiviert ist, werden keine live daten mitgeliefert.
+
+#### Datenabfrage deaktivieren
+
+Regelmäßigen Datenabruf für einen Inverter ein- oder ausschalten. Das macht das selbe wie beide schalter in der UI auf an bzw aus zu stellen. (Daten abrufen, Befehle senden). Der kommando wird gebraucht wenn man einen inverter stromlos schaltet, dann werden andere invertern nicht mehr ordentlich aktualisiert, weil die DTU immer auf die Antwort des ausgeschalteten Inverters wartet.
+
+```json
+{
+  "type": "set_polling",
+  "serial": "12345678",
+  "enabled": false
 }
 ```

@@ -2,8 +2,10 @@
 #include "UartInterface.h"
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <Configuration.h>
 #include <HardwareSerial.h>
 #include <Hoymiles.h>
+#include <MqttHandleHass.h>
 #include <defaults.h>
 
 namespace {
@@ -134,6 +136,11 @@ const char* getPowerCommandString(PowerCommandType command)
     return "";
 }
 
+bool isPollingEnabled(std::shared_ptr<InverterAbstract> inv)
+{
+    return inv->getEnablePolling();
+}
+
 void writeLiveObject(Print& out, std::shared_ptr<InverterAbstract> inv, bool includeAge)
 {
     auto stats = inv->Statistics();
@@ -183,6 +190,7 @@ void writeStatusObject(Print& out, std::shared_ptr<InverterAbstract> inv)
 {
     auto limitParser = inv->SystemConfigPara();
     auto powerParser = inv->PowerCommand();
+    const bool pollEnabled = isPollingEnabled(inv);
 
     out.write('{');
     out.print("\"limit_cmd\":{");
@@ -216,12 +224,16 @@ void writeStatusObject(Print& out, std::shared_ptr<InverterAbstract> inv)
         out.print(",\"last_state_cmd\":");
         printJsonString(out, getStateString(powerParser->getLastStateCommand()));
     }
+    out.print(",\"poll_enabled\":");
+    printJsonBool(out, pollEnabled);
     out.write('}');
 
     out.print(",\"serial\":");
     printJsonString(out, inv->serialString().c_str());
-    out.write(',');
-    writeLiveObject(out, inv, true);
+    if (pollEnabled) {
+        out.write(',');
+        writeLiveObject(out, inv, true);
+    }
     out.write('}');
 }
 
@@ -271,7 +283,18 @@ void writeStateUpdate(Print& out, std::shared_ptr<InverterAbstract> inv)
     out.println("}}");
 }
 
-void writeAck(Print& out, const char* command, const char* serial, bool success)
+void writePollingUpdate(Print& out, std::shared_ptr<InverterAbstract> inv, bool success)
+{
+    out.print("{\"type\":\"polling\",\"serial\":");
+    printJsonString(out, inv->serialString().c_str());
+    out.print(",\"polling_cmd\":{\"success\":");
+    printJsonBool(out, success);
+    out.print(",\"enabled\":");
+    printJsonBool(out, isPollingEnabled(inv));
+    out.println("}}");
+}
+
+void writeAck(Print& out, const char* command, const char* serial, bool success, bool includePolling = false, bool pollingEnabled = true)
 {
     out.print("{\"type\":\"ack\",\"command\":");
     printJsonString(out, command);
@@ -281,6 +304,10 @@ void writeAck(Print& out, const char* command, const char* serial, bool success)
     }
     out.print(",\"success\":");
     printJsonBool(out, success);
+    if (includePolling) {
+        out.print(",\"polling\":");
+        printJsonBool(out, pollingEnabled);
+    }
     out.println('}');
 }
 
@@ -369,6 +396,7 @@ void UartInterfaceClass::ensureTrackerSize()
         _trackers[i].lastDataUpdate = inv->Statistics()->getLastUpdate();
         _trackers[i].lastLimitDecisionUpdate = inv->SystemConfigPara()->getLastCompletedLimitCommandUpdate();
         _trackers[i].lastStateDecisionUpdate = inv->PowerCommand()->getLastCompletedPowerCommandUpdate();
+        _trackers[i].lastPollEnabled = isPollingEnabled(inv);
     }
 }
 
@@ -450,6 +478,11 @@ void UartInterfaceClass::handleCommandLine(const char* line)
             return;
         }
 
+        if (!isPollingEnabled(inv)) {
+            writeAck(dataSerial, "set_limit", doc["serial"], false, true, false);
+            return;
+        }
+
         bool success = inv->sendActivePowerControlRequest(doc["watts"].as<float>(), PowerLimitControlType::AbsolutNonPersistent);
         writeAck(dataSerial, "set_limit", doc["serial"], success);
         return;
@@ -466,6 +499,11 @@ void UartInterfaceClass::handleCommandLine(const char* line)
         auto inv = Hoymiles.getInverterBySerial(serialNumber);
         if (inv == nullptr) {
             writeAck(dataSerial, "set_state", doc["serial"], false);
+            return;
+        }
+
+        if (!isPollingEnabled(inv)) {
+            writeAck(dataSerial, "set_state", doc["serial"], false, true, false);
             return;
         }
 
@@ -504,6 +542,52 @@ void UartInterfaceClass::handleCommandLine(const char* line)
         return;
     }
 
+    if (strcmp(type, "set_polling") == 0) {
+        uint64_t serialNumber = 0;
+        if (!parseSerialString(doc["serial"], serialNumber) || doc["enabled"].isNull()) {
+            writeAck(dataSerial, "set_polling", doc["serial"] | "", false);
+            return;
+        }
+
+        auto inv = Hoymiles.getInverterBySerial(serialNumber);
+        if (inv == nullptr) {
+            writeAck(dataSerial, "set_polling", doc["serial"], false);
+            return;
+        }
+
+        const bool enabled = doc["enabled"].as<bool>();
+        bool success = false;
+        {
+            auto guard = Configuration.getWriteGuard();
+            auto& config = guard.getConfig();
+
+            for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
+                auto& inverter = config.Inverter[i];
+                if (inverter.Serial != serialNumber) {
+                    continue;
+                }
+
+                inverter.Poll_Enable = enabled;
+                inverter.Command_Enable = enabled;
+                success = true;
+                break;
+            }
+        }
+
+        if (success) {
+            success = Configuration.write();
+        }
+
+        if (success) {
+            inv->setEnablePolling(enabled);
+            inv->setEnableCommands(enabled);
+            MqttHandleHass.forceUpdate();
+        }
+
+        writeAck(dataSerial, "set_polling", doc["serial"], success);
+        return;
+    }
+
     writeAck(dataSerial, type[0] == '\0' ? "unknown" : type, doc["serial"] | "", false);
 }
 
@@ -523,7 +607,9 @@ void UartInterfaceClass::emitPendingUpdates()
         const uint32_t dataUpdate = inv->Statistics()->getLastUpdate();
         if (dataUpdate > 0 && dataUpdate != _trackers[i].lastDataUpdate) {
             _trackers[i].lastDataUpdate = dataUpdate;
-            writeDataUpdate(serial, inv);
+            if (isPollingEnabled(inv)) {
+                writeDataUpdate(serial, inv);
+            }
         }
 
         const uint32_t limitUpdate = inv->SystemConfigPara()->getLastCompletedLimitCommandUpdate();
@@ -536,6 +622,12 @@ void UartInterfaceClass::emitPendingUpdates()
         if (stateUpdate > 0 && stateUpdate != _trackers[i].lastStateDecisionUpdate) {
             _trackers[i].lastStateDecisionUpdate = stateUpdate;
             writeStateUpdate(serial, inv);
+        }
+
+        const bool pollEnabled = isPollingEnabled(inv);
+        if (pollEnabled != _trackers[i].lastPollEnabled) {
+            _trackers[i].lastPollEnabled = pollEnabled;
+            writePollingUpdate(serial, inv, true);
         }
     }
 }
