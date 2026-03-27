@@ -10,7 +10,6 @@ class InverterAbstract;
 class CommandQueue : public ThreadSafeQueue<std::shared_ptr<CommandAbstract>> {
 public:
     void removeAllEntriesForInverter(InverterAbstract* inv);
-    void removePollingEntriesForInverter(InverterAbstract* inv);
     void removeDuplicatedEntries(std::shared_ptr<CommandAbstract> cmd);
     void replaceEntries(std::shared_ptr<CommandAbstract> cmd);
 

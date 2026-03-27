@@ -2,10 +2,8 @@
 #include "UartInterface.h"
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <Configuration.h>
 #include <HardwareSerial.h>
 #include <Hoymiles.h>
-#include <SunPosition.h>
 #include <defaults.h>
 
 namespace {
@@ -286,39 +284,6 @@ void writeAck(Print& out, const char* command, const char* serial, bool success)
     out.println('}');
 }
 
-void writeInverterInventory(Print& out)
-{
-    out.print("{\"type\":\"inventory\",\"interval_s\":15,\"inverters\":[");
-
-    bool first = true;
-    for (uint8_t i = 0; i < Hoymiles.getNumInverters(); i++) {
-        auto inv = Hoymiles.getInverterByPos(i);
-        if (inv == nullptr) {
-            continue;
-        }
-
-        auto cfg = Configuration.getInverterConfig(inv->serial());
-        const bool pollEnabled = cfg != nullptr ? cfg->Poll_Enable : inv->getEnablePolling();
-
-        if (!first) {
-            out.write(',');
-        }
-        first = false;
-
-        out.print("{\"serial\":");
-        printJsonString(out, inv->serialString().c_str());
-        out.print(",\"name\":");
-        printJsonString(out, inv->name());
-        out.print(",\"poll_enabled\":");
-        printJsonBool(out, pollEnabled);
-        out.print(",\"polling_active\":");
-        printJsonBool(out, inv->getEnablePolling());
-        out.write('}');
-    }
-
-    out.println("]}");
-}
-
 void writeRequestedData(Print& out, std::shared_ptr<InverterAbstract> singleInv)
 {
     out.print("{\"type\":\"requested_data\",\"data\":[");
@@ -412,7 +377,6 @@ void UartInterfaceClass::loop()
     ensureTrackerSize();
     processIncomingData();
     emitPendingUpdates();
-    emitInverterInventory();
 }
 
 void UartInterfaceClass::processIncomingData()
@@ -540,41 +504,6 @@ void UartInterfaceClass::handleCommandLine(const char* line)
         return;
     }
 
-    if (strcmp(type, "set_polling") == 0) {
-        uint64_t serialNumber = 0;
-        if (!parseSerialString(doc["serial"], serialNumber) || !doc["enabled"].is<bool>()) {
-            writeAck(dataSerial, "set_polling", doc["serial"] | "", false);
-            return;
-        }
-
-        auto inv = Hoymiles.getInverterBySerial(serialNumber);
-        if (inv == nullptr) {
-            writeAck(dataSerial, "set_polling", doc["serial"], false);
-            return;
-        }
-
-        const bool enabled = doc["enabled"].as<bool>();
-        auto* cfg = Configuration.getInverterConfig(serialNumber);
-        if (cfg == nullptr) {
-            writeAck(dataSerial, "set_polling", doc["serial"], false);
-            return;
-        }
-
-        cfg->Poll_Enable = enabled;
-        const bool effectiveEnabled = cfg->Poll_Enable && (SunPosition.isDayPeriod() || cfg->Poll_Enable_Night);
-
-        if (!enabled) {
-            inv->getRadio()->removePollingCommands(inv.get());
-        }
-
-        inv->setEnablePolling(effectiveEnabled);
-
-        writeAck(dataSerial, "set_polling", doc["serial"], true);
-        writeInverterInventory(dataSerial);
-        _lastInventoryUpdate = millis();
-        return;
-    }
-
     writeAck(dataSerial, type[0] == '\0' ? "unknown" : type, doc["serial"] | "", false);
 }
 
@@ -609,19 +538,4 @@ void UartInterfaceClass::emitPendingUpdates()
             writeStateUpdate(serial, inv);
         }
     }
-}
-
-void UartInterfaceClass::emitInverterInventory(bool force)
-{
-    if (!_enabled) {
-        return;
-    }
-
-    const uint32_t now = millis();
-    if (!force && _lastInventoryUpdate != 0 && now - _lastInventoryUpdate < INVENTORY_INTERVAL_MS) {
-        return;
-    }
-
-    writeInverterInventory(getDataSerial());
-    _lastInventoryUpdate = now;
 }
