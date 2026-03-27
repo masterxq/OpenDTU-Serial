@@ -556,35 +556,27 @@ void UartInterfaceClass::handleCommandLine(const char* line)
         }
 
         const bool enabled = doc["enabled"].as<bool>();
-        bool success = false;
-        {
-            auto guard = Configuration.getWriteGuard();
-            auto& config = guard.getConfig();
-
-            for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
-                auto& inverter = config.Inverter[i];
-                if (inverter.Serial != serialNumber) {
-                    continue;
-                }
-
-                inverter.Poll_Enable = enabled;
-                inverter.Command_Enable = enabled;
-                success = true;
-                break;
-            }
+        auto inverter = Configuration.getInverterConfig(serialNumber);
+        if (inverter == nullptr) {
+            writeAck(dataSerial, "set_polling", doc["serial"], false);
+            return;
         }
 
-        if (success) {
-            success = Configuration.write();
+        inverter->Poll_Enable = enabled;
+        inverter->Command_Enable = enabled;
+
+        writeAck(dataSerial, "set_polling", doc["serial"], true);
+
+        inv->setEnablePolling(enabled);
+        inv->setEnableCommands(enabled);
+        writePollingUpdate(dataSerial, inv, true);
+        dataSerial.flush();
+
+        if (!Configuration.write()) {
+            return;
         }
 
-        if (success) {
-            inv->setEnablePolling(enabled);
-            inv->setEnableCommands(enabled);
-            MqttHandleHass.forceUpdate();
-        }
-
-        writeAck(dataSerial, "set_polling", doc["serial"], success);
+        MqttHandleHass.forceUpdate();
         return;
     }
 
