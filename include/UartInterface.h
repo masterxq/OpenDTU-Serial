@@ -19,14 +19,18 @@ private:
         bool lastPollEnabled = true;
     };
 
+    static constexpr uint32_t CONFIGURED_INVERTERS_INTERVAL_MS = 10 * 1000;
+
     void loop();
     void ensureTrackerSize();
     void processIncomingData();
     void handleCommandLine(const char* line);
     void emitPendingUpdates();
+    void emitConfiguredInvertersUpdate();
 
     Task _loopTask;
     std::vector<InverterTracker> _trackers;
+    uint32_t _lastConfiguredInvertersUpdate = 0;
 
     static constexpr size_t INPUT_BUFFER_SIZE = 256;
     char _inputBuffer[INPUT_BUFFER_SIZE] = {};
