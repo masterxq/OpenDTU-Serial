@@ -19,6 +19,9 @@ void PowerCommandParser::setLastCompletedPowerCommandSuccess(const LastCommandSu
     _lastCompletedPowerCommandSuccess = status;
     _hasCompletedPowerCommandResult = true;
     _lastCompletedPowerCommandUpdate = millis();
+    if (status == CMD_OK) {
+        _lastSuccessfulPowerCommandUpdate = _lastCompletedPowerCommandUpdate;
+    }
 }
 
 LastCommandSuccess PowerCommandParser::getLastCompletedPowerCommandSuccess() const
@@ -34,6 +37,11 @@ bool PowerCommandParser::hasCompletedPowerCommandResult() const
 uint32_t PowerCommandParser::getLastCompletedPowerCommandUpdate() const
 {
     return _lastCompletedPowerCommandUpdate;
+}
+
+uint32_t PowerCommandParser::getLastSuccessfulPowerCommandUpdate() const
+{
+    return _lastSuccessfulPowerCommandUpdate;
 }
 
 uint32_t PowerCommandParser::getLastUpdateCommand() const

@@ -23,6 +23,7 @@ public:
     LastCommandSuccess getLastCompletedPowerCommandSuccess() const;
     bool hasCompletedPowerCommandResult() const;
     uint32_t getLastCompletedPowerCommandUpdate() const;
+    uint32_t getLastSuccessfulPowerCommandUpdate() const;
     uint32_t getLastUpdateCommand() const;
     void setLastUpdateCommand(const uint32_t lastUpdate);
     void setLastStateCommand(const LastStateCommand state);
@@ -42,6 +43,7 @@ private:
 
     uint32_t _lastUpdateCommand = 0;
     uint32_t _lastCompletedPowerCommandUpdate = 0;
+    uint32_t _lastSuccessfulPowerCommandUpdate = 0;
     LastStateCommand _lastStateCommand = LastStateCommand::Unknown;
     bool _hasLastStateCommand = false;
     LastStateCommand _requestedStateCommand = LastStateCommand::Unknown;

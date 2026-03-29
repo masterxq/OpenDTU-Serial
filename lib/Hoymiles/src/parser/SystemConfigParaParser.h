@@ -19,6 +19,7 @@ public:
     LastCommandSuccess getLastCompletedLimitCommandSuccess() const;
     bool hasCompletedLimitCommandResult() const;
     uint32_t getLastCompletedLimitCommandUpdate() const;
+    uint32_t getLastSuccessfulLimitCommandUpdate() const;
     uint32_t getLastUpdateCommand() const;
     void setLastUpdateCommand(const uint32_t lastUpdate);
     void setLastAppliedLimitWatts(const float value);
@@ -50,6 +51,7 @@ private:
     bool _hasCompletedLimitCommandResult = false;
     bool _pendingLimitCommand = false;
     uint32_t _lastCompletedLimitCommandUpdate = 0;
+    uint32_t _lastSuccessfulLimitCommandUpdate = 0;
 
     uint32_t _lastUpdateCommand = 0;
     uint32_t _lastUpdateRequest = 0;

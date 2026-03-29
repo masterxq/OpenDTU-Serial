@@ -225,7 +225,7 @@ Die DTU antwortet mit einem Datensatz wie oben beschrieben. Wenn man die serial 
 
 Wenn polling deaktiviert ist, werden keine live daten mitgeliefert.
 
-#### Datenabfrage deaktivieren
+#### Datenabfrage eines Inverters deaktivieren
 
 Regelmäßigen Datenabruf für einen Inverter ein- oder ausschalten. Das macht das selbe wie beide schalter in der UI auf an bzw aus zu stellen. (Daten abrufen, Befehle senden). Der kommando wird gebraucht wenn man einen inverter stromlos schaltet, dann werden andere invertern nicht mehr ordentlich aktualisiert, weil die DTU immer auf die Antwort des ausgeschalteten Inverters wartet.
 
@@ -234,5 +234,27 @@ Regelmäßigen Datenabruf für einen Inverter ein- oder ausschalten. Das macht d
   "type": "set_polling",
   "serial": "12345678",
   "enabled": false
+}
+```
+
+
+### Zyklische Updates
+
+
+#### Konfigurierte Inverter und letzte Sichtung
+
+Alle 10 Sekunden sendet die DTU eine Liste aller konfigurierten Inverter mit der Zeit seit dem letzten bestätigten Kontakt. Als bestätigter Kontakt gilt entweder der Erhalt eines Datenpakets vom Inverter oder ein erfolgreich umgesetztes Inverter-Kommando. Das kann genutzt werden um zu erkennen das der Inverter selbst erreicht ist und gibt eine übersicht über die erreichbarkeit aller Inverter.
+
+```json
+{
+  "type": "configured_inverters",
+  "inverters": [
+    {
+      "serial": "12345678",
+      "poll_enabled": true,
+      "last_seen_age_ms": 5000
+    },
+    ...
+  ]
 }
 ```

@@ -141,6 +141,23 @@ bool isPollingEnabled(std::shared_ptr<InverterAbstract> inv)
     return inv->getEnablePolling();
 }
 
+uint32_t getLastConfirmedContactUpdate(std::shared_ptr<InverterAbstract> inv)
+{
+    uint32_t lastConfirmedContact = inv->Statistics()->getLastUpdate();
+
+    const uint32_t lastSuccessfulLimitCommand = inv->SystemConfigPara()->getLastSuccessfulLimitCommandUpdate();
+    if (lastSuccessfulLimitCommand > lastConfirmedContact) {
+        lastConfirmedContact = lastSuccessfulLimitCommand;
+    }
+
+    const uint32_t lastSuccessfulStateCommand = inv->PowerCommand()->getLastSuccessfulPowerCommandUpdate();
+    if (lastSuccessfulStateCommand > lastConfirmedContact) {
+        lastConfirmedContact = lastSuccessfulStateCommand;
+    }
+
+    return lastConfirmedContact;
+}
+
 void writeLiveObject(Print& out, std::shared_ptr<InverterAbstract> inv, bool includeAge)
 {
     auto stats = inv->Statistics();
@@ -336,6 +353,36 @@ void writeRequestedData(Print& out, std::shared_ptr<InverterAbstract> singleInv)
     out.println("]}");
 }
 
+void writeConfiguredInvertersUpdate(Print& out)
+{
+    out.print("{\"type\":\"configured_inverters\",\"inverters\":[");
+
+    bool first = true;
+    for (uint8_t i = 0; i < Hoymiles.getNumInverters(); i++) {
+        auto inv = Hoymiles.getInverterByPos(i);
+        if (inv == nullptr) {
+            continue;
+        }
+
+        if (!first) {
+            out.write(',');
+        }
+        first = false;
+
+        const uint32_t lastConfirmedContact = getLastConfirmedContactUpdate(inv);
+
+        out.print("{\"serial\":");
+        printJsonString(out, inv->serialString().c_str());
+        out.print(",\"poll_enabled\":");
+        printJsonBool(out, isPollingEnabled(inv));
+        out.print(",\"last_seen_age_ms\":");
+        out.print(lastConfirmedContact > 0 ? millis() - lastConfirmedContact : 0);
+        out.write('}');
+    }
+
+    out.println("]}");
+}
+
 bool parseSerialString(JsonVariantConst value, uint64_t& serial)
 {
     if (value.isNull() || !value.is<const char*>()) {
@@ -405,6 +452,7 @@ void UartInterfaceClass::loop()
     ensureTrackerSize();
     processIncomingData();
     emitPendingUpdates();
+    emitConfiguredInvertersUpdate();
 }
 
 void UartInterfaceClass::processIncomingData()
@@ -622,4 +670,20 @@ void UartInterfaceClass::emitPendingUpdates()
             writePollingUpdate(serial, inv, true);
         }
     }
+}
+
+void UartInterfaceClass::emitConfiguredInvertersUpdate()
+{
+    if (!_enabled) {
+        return;
+    }
+
+    const uint32_t now = millis();
+    if (_lastConfiguredInvertersUpdate > 0
+            && now - _lastConfiguredInvertersUpdate < CONFIGURED_INVERTERS_INTERVAL_MS) {
+        return;
+    }
+
+    _lastConfiguredInvertersUpdate = now;
+    writeConfiguredInvertersUpdate(getDataSerial());
 }

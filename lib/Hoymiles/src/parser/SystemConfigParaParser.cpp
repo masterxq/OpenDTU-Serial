@@ -81,6 +81,9 @@ void SystemConfigParaParser::setLastCompletedLimitCommandSuccess(const LastComma
     _lastCompletedLimitCommandSuccess = status;
     _hasCompletedLimitCommandResult = true;
     _lastCompletedLimitCommandUpdate = millis();
+    if (status == CMD_OK) {
+        _lastSuccessfulLimitCommandUpdate = _lastCompletedLimitCommandUpdate;
+    }
 }
 
 LastCommandSuccess SystemConfigParaParser::getLastCompletedLimitCommandSuccess() const
@@ -96,6 +99,11 @@ bool SystemConfigParaParser::hasCompletedLimitCommandResult() const
 uint32_t SystemConfigParaParser::getLastCompletedLimitCommandUpdate() const
 {
     return _lastCompletedLimitCommandUpdate;
+}
+
+uint32_t SystemConfigParaParser::getLastSuccessfulLimitCommandUpdate() const
+{
+    return _lastSuccessfulLimitCommandUpdate;
 }
 
 uint32_t SystemConfigParaParser::getLastUpdateCommand() const
