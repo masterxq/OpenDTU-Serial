@@ -7,8 +7,8 @@
 #include <cstdint>
 
 #define RF_LEN 32
-#define MAX_RESEND_COUNT 4 // Used if all packages are missing
-#define MAX_RETRANSMIT_COUNT 5 // Used to send the retransmit package
+#define MAX_RESEND_COUNT 1 // Used if all packages are missing
+#define MAX_RETRANSMIT_COUNT 2 // Used to send the retransmit package
 
 class InverterAbstract;
 

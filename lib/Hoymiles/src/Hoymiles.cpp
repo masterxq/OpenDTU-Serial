@@ -69,7 +69,9 @@ void HoymilesClass::loop()
         if (iv->getEnablePolling() || iv->getEnableCommands()) {
             ESP_LOGI(TAG, "Fetch inverter: %s", iv->serialString().c_str());
 
-            if (!iv->isReachable()) {
+            const bool isReachable = iv->isReachable();
+
+            if (!isReachable) {
                 iv->sendChangeChannelRequest();
             }
 
@@ -77,37 +79,39 @@ void HoymilesClass::loop()
                 // Fetch statistics
                 iv->sendStatsRequest();
 
-                // Fetch event log
-                const bool force = iv->EventLog()->getLastAlarmRequestSuccess() == CMD_NOK;
-                iv->sendAlarmLogRequest(force);
+                if (isReachable) {
+                    // Fetch event log
+                    const bool force = iv->EventLog()->getLastAlarmRequestSuccess() == CMD_NOK;
+                    iv->sendAlarmLogRequest(force);
 
-                // Fetch limit
-                if (((millis() - iv->SystemConfigPara()->getLastUpdateRequest() > HOY_SYSTEM_CONFIG_PARA_POLL_INTERVAL)
-                        && (millis() - iv->SystemConfigPara()->getLastUpdateCommand() > HOY_SYSTEM_CONFIG_PARA_POLL_MIN_DURATION))) {
-                    ESP_LOGI(TAG, "Request SystemConfigPara");
-                    iv->sendSystemConfigParaRequest();
-                }
-
-                // Fetch grid profile
-                if (iv->Statistics()->getLastUpdate() > 0 && (iv->GridProfile()->getLastUpdate() == 0 || !iv->GridProfile()->containsValidData())) {
-                    iv->sendGridOnProFileParaRequest();
-                }
-
-                // Fetch dev info (but first fetch stats)
-                if (iv->Statistics()->getLastUpdate() > 0) {
-                    const bool invalidDevInfo = !iv->DevInfo()->containsValidData()
-                        && iv->DevInfo()->getLastUpdateAll() > 0
-                        && iv->DevInfo()->getLastUpdateSimple() > 0;
-
-                    if (invalidDevInfo) {
-                        ESP_LOGW(TAG, "DevInfo: No Valid Data");
+                    // Fetch limit
+                    if (((millis() - iv->SystemConfigPara()->getLastUpdateRequest() > HOY_SYSTEM_CONFIG_PARA_POLL_INTERVAL)
+                            && (millis() - iv->SystemConfigPara()->getLastUpdateCommand() > HOY_SYSTEM_CONFIG_PARA_POLL_MIN_DURATION))) {
+                        ESP_LOGI(TAG, "Request SystemConfigPara");
+                        iv->sendSystemConfigParaRequest();
                     }
 
-                    if ((iv->DevInfo()->getLastUpdateAll() == 0)
-                        || (iv->DevInfo()->getLastUpdateSimple() == 0)
-                        || invalidDevInfo) {
-                        ESP_LOGI(TAG, "Request device info");
-                        iv->sendDevInfoRequest();
+                    // Fetch grid profile
+                    if (iv->Statistics()->getLastUpdate() > 0 && (iv->GridProfile()->getLastUpdate() == 0 || !iv->GridProfile()->containsValidData())) {
+                        iv->sendGridOnProFileParaRequest();
+                    }
+
+                    // Fetch dev info (but first fetch stats)
+                    if (iv->Statistics()->getLastUpdate() > 0) {
+                        const bool invalidDevInfo = !iv->DevInfo()->containsValidData()
+                            && iv->DevInfo()->getLastUpdateAll() > 0
+                            && iv->DevInfo()->getLastUpdateSimple() > 0;
+
+                        if (invalidDevInfo) {
+                            ESP_LOGW(TAG, "DevInfo: No Valid Data");
+                        }
+
+                        if ((iv->DevInfo()->getLastUpdateAll() == 0)
+                            || (iv->DevInfo()->getLastUpdateSimple() == 0)
+                            || invalidDevInfo) {
+                            ESP_LOGI(TAG, "Request device info");
+                            iv->sendDevInfoRequest();
+                        }
                     }
                 }
             }
