@@ -77,6 +77,7 @@ Wenn die DTU Daten empfängt, wird ein Update mit genau den live daten aus dem A
 #### Limit Update
 
 Wenn der entschluss getroffen wurde ob ein limit cmd erfolgreich angewendet wurde, wird ein Update mit den Informationen zum limit gesendet.
+Vorsicht: Meldet beim ersten versuch fehlversuch der übertragung an den Inverter sofort false zurück. Die DTU probiert es weiter bis es erfolgreich ist. Die unmittelbare Negativ antwort ist von daher eigentlich nicht zu gebrauchen.
 
 ```json
 {
@@ -92,6 +93,7 @@ Wenn der entschluss getroffen wurde ob ein limit cmd erfolgreich angewendet wurd
 #### on/off/restart
 
 Wenn der entschluss getroffen wurde ob ein on/off/restart cmd erfolgreich angewendet wurde, wird ein Update mit den Informationen zum state gesendet.
+Vorsicht: Meldet beim ersten versuch fehlversuch der übertragung an den Inverter sofort false zurück. Die DTU probiert es weiter bis es erfolgreich ist. Die unmittelbare Negativ antwort ist von daher eigentlich nicht zu gebrauchen.
 
 ```json
 {
