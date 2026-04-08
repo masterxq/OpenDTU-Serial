@@ -57,6 +57,9 @@ Es wird unterschieden zwischen zwei Arten von Updates, die sich im JSON Format u
 
 Wenn die DTU Daten empfängt, wird ein Update mit genau den live daten aus dem API Endpunkt gesendet. Der timestamp wird dabei weg gelassen weil es immer sofort gesendet wird. Der empfänger kann dann selbst den timestamp setzen nach seiner systemzeit.
 
+- Ein `type: "data"` Update wird nur nach einem erfolgreichen Live-Daten-Request an den Inverter gesendet.
+- Das bedeutet der Inverter ist erreichbar und liefert Daten.
+
 ```json
 {
   "type": "data",
@@ -68,8 +71,7 @@ Wenn die DTU Daten empfängt, wird ein Update mit genau den live daten aus dem A
     "dc_power": 3200,
     "dc_voltage": 400,
     "dc_current": 8,
-    "temperature": 45,
-    "reachable": true
+    "temperature": 45
   }
 }
 ```
